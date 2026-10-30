@@ -49,6 +49,7 @@ def draw_slide(slide, path):
     img = Image.new("RGB", (int(W), int(H)), "white")
     d = ImageDraw.Draw(img)
     problems = []
+    rects = []
 
     for sh in slide.shapes:
         x, y = Emu(sh.left).inches * DPI, Emu(sh.top).inches * DPI
@@ -85,6 +86,8 @@ def draw_slide(slide, path):
             line = tuple(sh.line.color.rgb) if sh.line.width and sh.line.width.pt > 0 else None
         except Exception:
             line = None
+        if fill:
+            rects.append((sh.name, x, y, w, h))
         if fill or line:
             rad = 12
             if sh.__class__.__name__ == "Shape":
@@ -129,6 +132,15 @@ def draw_slide(slide, path):
                 tx = x + w / 2 - tw / 2
             d.text((tx, cy), disp, font=f, fill=col)
             cy += lh
+
+    for i in range(len(rects)):
+        n1, x1, y1, w1, h1 = rects[i]
+        for j in range(i + 1, len(rects)):
+            n2, x2, y2, w2, h2 = rects[j]
+            ox = min(x1 + w1, x2 + w2) - max(x1, x2)
+            oy = min(y1 + h1, y2 + h2) - max(y1, y2)
+            if ox > 2 and oy > 2:
+                problems.append(f"OVERLAP {ox/DPI:.2f}x{oy/DPI:.2f}in: {n1} / {n2}")
 
     img.save(path)
     return problems

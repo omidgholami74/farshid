@@ -33,11 +33,12 @@ SW, SH = 13.333, 7.5
 LEFT, RIGHT = 0.45, 11.0
 CW = RIGHT - LEFT                       # 10.55
 BADGE_X, BADGE_W = 11.2, 1.68
-COL3 = (RIGHT - 2 * 0.35) / 3           # 3.2833
-COL4 = (RIGHT - 3 * 0.35) / 4           # 2.375
-X3 = [RIGHT - COL3, RIGHT - 2 * COL3 - 0.35, LEFT]          # RTL columns
+GAP = 0.35
+COL3 = (CW - 2 * GAP) / 3               # 3.2833
+COL4 = (CW - 3 * GAP) / 4               # 2.375
+X3 = [RIGHT - COL3 - i * (COL3 + GAP) for i in range(3)]     # RTL columns
 C3 = [x + COL3 / 2 for x in X3]
-X4 = [RIGHT - COL4, RIGHT - 2 * COL4 - 0.35, RIGHT - 3 * COL4 - 0.70, LEFT]
+X4 = [RIGHT - COL4 - i * (COL4 + GAP) for i in range(4)]
 C4 = [x + COL4 / 2 for x in X4]
 
 
@@ -362,7 +363,7 @@ def slide_phase3(prs):
 
     # --- row E: heads
     yE, hE = 6.2, 0.85
-    w4, gap = 2.4125, 0.25
+    w4, gap = (CW - 3 * 0.25) / 4, 0.25
     xE = [RIGHT - w4, RIGHT - 2 * w4 - gap, RIGHT - 3 * w4 - 2 * gap, RIGHT - 4 * w4 - 3 * gap]
     cE = [x + w4 / 2 for x in xE]
     heads = [
