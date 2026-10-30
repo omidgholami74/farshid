@@ -92,8 +92,16 @@ def arrow(ax, pts, label=None, lw=1.5, dashed=False, color=LINE, rad=0.0,
                 bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
 
 
-def text(ax, x, y, t, fs=10, bold=False, color=INK, ha="center", va="center"):
-    ax.text(x, -y, fa(t), ha=ha, va=va, fontproperties=_fp(bold, fs), color=color, zorder=5)
+def text(ax, x, y, t, fs=10, bold=False, color=INK, ha="center", va="center", rot=0):
+    ax.text(x, -y, fa(t), ha=ha, va=va, fontproperties=_fp(bold, fs), color=color, zorder=5,
+            rotation=rot)
+
+
+def line(ax, pts, lw=1.0, dashed=False, color="#808080"):
+    """Plain polyline without an arrow head (used for stage separators)."""
+    xy = [(x, -y) for x, y in pts]
+    ax.plot([p[0] for p in xy], [p[1] for p in xy], lw=lw, color=color,
+            linestyle=(0, (6, 3)) if dashed else "-", zorder=0, solid_capstyle="butt")
 
 
 def render(spec, png_path, svg_path=None, dpi=300):
@@ -115,9 +123,13 @@ def render(spec, png_path, svg_path=None, dpi=300):
         arrow(ax, a["p"], a.get("label"), a.get("lw", 1.5), a.get("dash", False),
               a.get("color", LINE), a.get("rad", 0.0), a.get("head", 11),
               a.get("lfs", 9), a.get("dx", 0.0), a.get("dy", 0.08), a.get("lbold", False))
+    for ln in spec.get("lines", []):
+        line(ax, ln["p"], ln.get("lw", 1.0), ln.get("dash", False),
+             ln.get("color", "#808080"))
     for t in spec.get("texts", []):
         text(ax, t["x"], t["y"], t["t"], t.get("fs", 10), t.get("bold", False),
-             t.get("color", INK), t.get("ha", "center"), t.get("va", "center"))
+             t.get("color", INK), t.get("ha", "center"), t.get("va", "center"),
+             t.get("rot", 0))
 
     os.makedirs(os.path.dirname(png_path) or ".", exist_ok=True)
     fig.savefig(png_path, dpi=dpi, facecolor="white", bbox_inches=None, pad_inches=0)
@@ -210,17 +222,33 @@ def to_pptx(spec, pptx_path, slide_w=13.333, slide_h=None, title=None):
         c.line.fill.solid()
         add_arrowhead(c, dashed=a.get("dash", False))
 
+    for ln in spec.get("lines", []):
+        pts = ln["p"]
+        for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:]):
+            c = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, E(x1, sx), E(y1, sy),
+                                           E(x2, sx), E(y2, sy))
+            c.line.color.rgb = rgb(ln.get("color", "#808080"))
+            c.line.width = Pt(ln.get("lw", 1.0))
+            if ln.get("dash"):
+                from pptx.enum.dml import MSO_LINE_DASH_STYLE
+                c.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+
     for t in spec.get("texts", []):
-        tb = slide.shapes.add_textbox(E(t["x"] - 0.5, sx), E(t["y"] - 0.2, sy),
-                                      E(1.0, sx), E(0.4, sy))
-        p = tb.text_frame.paragraphs[0]
-        p.alignment = PP_ALIGN.CENTER
-        r = p.add_run()
-        r.text = t["t"]
-        r.font.size = Pt(t.get("fs", 10))
-        r.font.bold = bool(t.get("bold"))
-        r.font.name = "Vazirmatn"
-        r.font.color.rgb = rgb(t.get("color", INK))
+        rot = t.get("rot", 0)
+        bw, bh = (1.75, 0.42) if rot else (1.0, 0.4)
+        tb = slide.shapes.add_textbox(E(t["x"] - bw / 2.0, sx), E(t["y"] - bh / 2.0, sy),
+                                      E(bw, sx), E(bh, sy))
+        if rot:
+            tb.rotation = 270
+        for i, ln in enumerate(str(t["t"]).split("\n")):
+            p = tb.text_frame.paragraphs[0] if i == 0 else tb.text_frame.add_paragraph()
+            p.alignment = PP_ALIGN.CENTER
+            r = p.add_run()
+            r.text = ln
+            r.font.size = Pt(t.get("fs", 10))
+            r.font.bold = bool(t.get("bold"))
+            r.font.name = "Vazirmatn"
+            r.font.color.rgb = rgb(t.get("color", INK))
 
     prs.save(pptx_path)
     return pptx_path
