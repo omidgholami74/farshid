@@ -39,6 +39,7 @@ def _axis_title(ax, text, fs, color=MUTED):
 def bars(fig, x, y, w, h, cats, vals, color="#9DC3E6", ec=LINE, fs=9,
          xtitle=None, ytitle=None, ymax=None, gap=12, data_labels=False,
          horizontal=False, labels_fmt=None, per_point=None):
+    fs = fs * fig.k
     cd = CategoryChartData()
     cd.categories = cats
     cd.add_series("فراوانی", vals)
@@ -104,6 +105,7 @@ def bars(fig, x, y, w, h, cats, vals, color="#9DC3E6", ec=LINE, fs=9,
 
 def lines(fig, x, y, w, h, cats, series, fs=9, ymin=None, ymax=None,
           xtitle=None, ytitle=None, legend=True):
+    fs = fs * fig.k
     cd = CategoryChartData()
     cd.categories = cats
     for s in series:
@@ -150,6 +152,8 @@ def lines(fig, x, y, w, h, cats, series, fs=9, ymin=None, ymax=None,
 
 def xy(fig, x, y, w, h, xvals, yvals, color="#1F3864", lw=2.2, fs=9,
        xtitle=None, ytitle=None):
+    fs = fs * fig.k
+    lw = lw * fig.k
     cd = XyChartData()
     ser_data = cd.add_series("Series 1")
     for xv, yv in zip(xvals, yvals):

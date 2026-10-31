@@ -200,7 +200,7 @@ class Fig:
                     continue
                 run = p.add_run()
                 run.text = seg
-                _style(run, fs, bold or (j % 2 == 1), color, self.font)
+                _style(run, fs * self.k, bold or (j % 2 == 1), color, self.font)
 
     def text(self, x, y, w, h, s, fs=12, bold=False, color=INK, align="r",
              anchor="mid", spacing=1.0, name=None):
