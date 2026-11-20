@@ -72,7 +72,7 @@ def main():
         ts = [x.text for x in t._tbl.iter(qn("w:t"))]
         nums.append(ts[0] if ts else "?")
     print("numbering:", nums[0], "...", nums[len(nums) // 2], "...", nums[-1])
-    print("section present:", "معماری پایش عملیاتی مبتنی بر پرومتئوس" in xml)
+    print("section present:", "چهارچوب روش‌شناختی پایش عملیاتی مبتنی بر پرومتئوس" in xml)
     print("sources heading:", any(p.text.strip() == "منابع" for p in doc.paragraphs))
     return 1 if problems or direct else 0
 
