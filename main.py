@@ -85,6 +85,15 @@ def to_python(v):
     return v
 
 
+def improvement_to_minutes(value):
+    """Convert tanh-normalized improvement (seconds / 3600) to minutes."""
+    value = float(value)
+    if not math.isfinite(value):
+        return float("nan")
+    limit = 1.0 - 1e-7
+    return math.atanh(max(-limit, min(limit, value))) * 60.0
+
+
 # ===========================================================================
 # 1) آمار Case
 # ===========================================================================
@@ -1276,6 +1285,7 @@ def detect_bottlenecks_and_improvements(
                 "activity_id": a,
                 "activity_name": activities_index[a] if a < len(activities_index) else f"A{a}",
                 "predicted_improvement": float(v),
+                "predicted_improvement_minutes": improvement_to_minutes(v),
                 "occurrences": count_by_activity.get(a, 0),
             }
             for a, v in improvement_ranking
@@ -1412,12 +1422,12 @@ def plot_bottleneck_analysis(bottleneck_results, activities_index, top_n=15):
 
     imps = bottleneck_results["improvers"][:top_n]
     names2 = [b["activity_name"][:18] for b in imps]
-    potentials = [b["predicted_improvement"] for b in imps]
+    potentials = [b["predicted_improvement_minutes"] for b in imps]
     colors = ["#27AE60" if v > 0 else "#E67E22" for v in potentials]
     axes[1].barh(names2[::-1], potentials[::-1], color=colors[::-1],
                  edgecolor="#1F4E79")
     axes[1].axvline(0, color="black", lw=1)
-    axes[1].set_xlabel(fa("پتانسیل بهبود (نرمال‌شده)"))
+    axes[1].set_xlabel(fa("پتانسیل بهبود پیش‌بینی‌شده (دقیقه)"))
     axes[1].set_title(fa("شکل ۴.۷: فعالیت‌های بهبوددهنده تأخیر"), fontweight='bold')
     axes[1].grid(alpha=0.3, axis='x')
 
@@ -1455,15 +1465,16 @@ def plot_remaining_time_prediction(preds):
 
 
 def plot_improvement_prediction(preds):
-    imp_true = preds["imp_true"].numpy()
-    imp_pred = preds["imp_pred"].numpy()
+    limit = 1.0 - 1e-7
+    imp_true = np.arctanh(np.clip(preds["imp_true"].numpy(), -limit, limit)) * 60.0
+    imp_pred = np.arctanh(np.clip(preds["imp_pred"].numpy(), -limit, limit)) * 60.0
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     axes[0].scatter(imp_true, imp_pred, alpha=0.3, s=8, color="#27AE60")
     lim = max(abs(imp_true).max(), abs(imp_pred).max())
     axes[0].plot([-lim, lim], [-lim, lim], 'r--', lw=2)
-    axes[0].set_xlabel(fa("پتانسیل بهبود واقعی"))
-    axes[0].set_ylabel(fa("پتانسیل بهبود پیش‌بینی‌شده"))
+    axes[0].set_xlabel(fa("پتانسیل بهبود واقعی (دقیقه)"))
+    axes[0].set_ylabel(fa("پتانسیل بهبود پیش‌بینی‌شده (دقیقه)"))
     axes[0].set_title(fa("پیش‌بینی پتانسیل بهبود تأخیر"))
     axes[0].grid(alpha=0.3)
 
@@ -1597,10 +1608,12 @@ def save_results_tables(
               newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(["rank", "activity_id", "activity_name",
-                    "predicted_improvement", "occurrences"])
+                    "predicted_improvement_normalized", "predicted_improvement_minutes",
+                    "occurrences"])
         for i, imp in enumerate(bottleneck_results["improvers"]):
             w.writerow([i+1, imp["activity_id"], imp["activity_name"],
                         f"{imp['predicted_improvement']:.4f}",
+                        f"{imp['predicted_improvement_minutes']:.2f}",
                         imp["occurrences"]])
 
     np.savez(
@@ -1632,7 +1645,8 @@ def recommend_improvements_for_prefix(
     if seq_len == 0:
         return {"next_activity_recommendations": [],
                 "predicted_remaining_time_log": 0.0,
-                "predicted_improvement": 0.0}
+                "predicted_improvement": 0.0,
+                "predicted_improvement_minutes": 0.0}
 
     pad_len = dataset.max_seq_len - seq_len
 
@@ -1687,12 +1701,14 @@ def recommend_improvements_for_prefix(
             "activity": name,
             "probability": p,
             "predicted_delay_improvement": imp,
+            "predicted_delay_improvement_minutes": improvement_to_minutes(imp),
         })
 
     return {
         "next_activity_recommendations": recommendations,
         "predicted_remaining_time_log": rem,
         "predicted_improvement": imp,
+        "predicted_improvement_minutes": improvement_to_minutes(imp),
     }
 
 
@@ -1841,7 +1857,7 @@ def main():
     print("\n🟢 فعالیت‌های بهبوددهنده تأخیر:")
     for i, imp in enumerate(bottleneck_results["improvers"][:10]):
         print(f"  {i+1}. {imp['activity_name']}: "
-              f"improvement={imp['predicted_improvement']:.3f}")
+              f"پتانسیل بهبود پیش‌بینی‌شده={imp['predicted_improvement_minutes']:+.2f} دقیقه")
 
     print("\nتولید شکل‌ها ...")
     plot_learning_curves(history)
@@ -1897,7 +1913,9 @@ def main():
         print("\nپیشنهاد فعالیت‌های بعدی:")
         for r in rec["next_activity_recommendations"]:
             print(f"  • {r['activity']} — احتمال: {r['probability']*100:.2f}%")
-        print(f"\nتخمین پتانسیل بهبود تأخیر: {rec['predicted_improvement']:.4f}")
+        print(f"\nتخمین پتانسیل بهبود تأخیر: "
+              f"{rec['predicted_improvement_minutes']:+.2f} دقیقه "
+              f"(خروجی نرمال‌شده: {rec['predicted_improvement']:.4f})")
         print(f"تخمین زمان باقی‌مانده (log): {rec['predicted_remaining_time_log']:.4f}")
 
     print(f"\n✅ تمام نتایج در پوشه '{OUTPUT_DIR}' ذخیره شدند.")

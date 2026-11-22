@@ -315,8 +315,10 @@ rec = M.recommend_improvements_for_prefix(
 
 top = pd.DataFrame(rec["next_activity_recommendations"])
 top["probability"] = (top["probability"] * 100).round(2)
-top["predicted_delay_improvement"] = top["predicted_delay_improvement"].round(4)
-top.columns = ["فعالیت پیش‌بینی‌شده", "احتمال (٪)", "پتانسیل بهبود (تانژانت هذلولوی)"]
+top["پتانسیل بهبود (نرمال‌شده)"] = top["predicted_delay_improvement"].round(4)
+top["پتانسیل بهبود (دقیقه)"] = top["predicted_delay_improvement_minutes"].round(2)
+top = top[["activity", "probability", "پتانسیل بهبود (نرمال‌شده)", "پتانسیل بهبود (دقیقه)"]]
+top.columns = ["فعالیت پیش‌بینی‌شده", "احتمال (٪)", "پتانسیل بهبود (نرمال‌شده)", "پتانسیل بهبود (دقیقه)"]
 top
 """)
 
@@ -328,9 +330,10 @@ print("زمان باقی‌مانده (خروجی خام مدل، لگاریتم
 print("زمان باقی‌مانده (ثانیه، بازگردانی‌شده)  :", round(math.expm1(rem_log), 1))
 print("زمان باقی‌مانده (ساعت)                 :", round(math.expm1(rem_log) / 3600, 2))
 print()
-print("پتانسیل بهبود تأخیر (تانژانت):", round(imp, 4))
-print("تفسیر: مقدار مثبت یعنی رویداد بعدی نسبت به میانگین تاریخی این فعالیت،")
-print("       انتظار کوتاه‌تری دارد و مقدار منفی یعنی انتظار طولانی‌تر از میانگین.")
+print("پتانسیل بهبود تأخیر (نرمال‌شده):", round(imp, 4))
+print("پتانسیل بهبود تأخیر (دقیقه):", round(rec["predicted_improvement_minutes"], 2))
+print("تفسیر: مقدار مثبت یعنی انتظار پیش‌بینی‌شده کمتر از میانگین تاریخی فعالیت،")
+print("       و مقدار منفی یعنی انتظار پیش‌بینی‌شده بیشتر از میانگین است.")
 """)
 
 md("""
@@ -354,7 +357,7 @@ mae_imp = mean_absolute_error(preds["imp_true"].numpy(), preds["imp_pred"].numpy
 
 metrics = {name: round(value * 100, 2) for name, value in topk.items()}
 metrics["MAE زمان باقی‌مانده"] = round(mae_rem, 4)
-metrics["MAE پتانسیل بهبود"] = round(mae_imp, 4)
+metrics["MAE پتانسیل بهبود (نرمال‌شده)"] = round(mae_imp, 4)
 metrics["تعداد نمونه آزمون"] = len(test_idx)
 
 pd.DataFrame({"معیار": list(metrics), "مقدار": list(metrics.values())})
@@ -419,7 +422,8 @@ for name, avg_wait in sorted(wait.items(), key=lambda kv: kv[1], reverse=True)[:
     rows.append({
         "فعالیت": name,
         "میانگین انتظار واقعی (دقیقه)": round(avg_wait / 60, 2),
-        "پتانسیل بهبود پیش‌بینی‌شده": round(improve.get(name, float("nan")), 4),
+        "پتانسیل بهبود (نرمال‌شده)": round(improve.get(name, float("nan")), 4),
+        "پتانسیل بهبود (دقیقه)": round(M.improvement_to_minutes(improve.get(name, float("nan"))), 2),
     })
 
 bottlenecks = pd.DataFrame(rows)
@@ -449,7 +453,8 @@ out_metrics = {
     "sample_prediction_top1": rec["next_activity_recommendations"][0]["activity"],
     "sample_prediction_top1_prob": float(rec["next_activity_recommendations"][0]["probability"]),
     "sample_remaining_seconds": float(math.expm1(rec["predicted_remaining_time_log"])),
-    "sample_improvement": float(rec["predicted_improvement"]),
+    "sample_improvement_normalized": float(rec["predicted_improvement"]),
+    "sample_improvement_minutes": float(rec["predicted_improvement_minutes"]),
 }
 
 with open(os.path.join(OUT_DIR, "walkthrough_metrics.json"), "w", encoding="utf8") as f:
