@@ -90,7 +90,6 @@ code(r"""
 import pandas as pd
 from pm4py import read_xes
 from pm4py.objects.conversion.log import converter as log_converter
-from pm4py.util import xes_constants as xes
 
 if not os.path.exists(DATA_PATH):
     raise FileNotFoundError(
@@ -101,7 +100,12 @@ if not os.path.exists(DATA_PATH):
 log = read_xes(DATA_PATH)
 df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
 
-CASE, ACT, TS = xes.CASE_CONCEPT_NAME, xes.DEFAULT_NAME_KEY, xes.DEFAULT_TIMESTAMP_KEY
+# XES keys are stable strings; CASE_CONCEPT_NAME is absent in some pm4py releases.
+CASE, ACT, TS = "case:concept:name", "concept:name", "time:timestamp"
+missing_columns = [key for key in (CASE, ACT, TS) if key not in df.columns]
+if missing_columns:
+    raise KeyError("ستون‌های موردنیاز در داده نیستند: %s | ستون‌های موجود: %s"
+                   % (missing_columns, list(df.columns)))
 
 print("تعداد پرونده :", len(log))
 print("تعداد رویداد :", sum(len(c) for c in log))
@@ -141,7 +145,7 @@ md("""
 
 code(r"""
 sample_case = next((c for c in log if len(c) >= 8), log[0])
-case_id = sample_case.attributes.get(xes.DEFAULT_TRACEID_KEY)
+case_id = sample_case.attributes.get("concept:name", "<نامشخص>")
 print("پرونده نمونه:", case_id, "| تعداد رویداد:", len(sample_case))
 print()
 
