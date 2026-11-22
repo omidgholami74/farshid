@@ -107,6 +107,9 @@ if missing_columns:
     raise KeyError("ستون‌های موردنیاز در داده نیستند: %s | ستون‌های موجود: %s"
                    % (missing_columns, list(df.columns)))
 
+# Normalize XES timestamps so pandas can safely use .dt and compare mixed time zones.
+df[TS] = pd.to_datetime(df[TS], errors="raise", utc=True)
+
 print("تعداد پرونده :", len(log))
 print("تعداد رویداد :", sum(len(c) for c in log))
 print("تعداد فعالیت :", df[ACT].nunique())
