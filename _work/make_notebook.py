@@ -442,14 +442,14 @@ out_metrics = {
     "num_activities": len(activities_index),
     "num_samples": len(dataset),
     "num_test_samples": len(test_idx),
-    "top_k_accuracy_percent": {k: v * 100 for k, v in topk.items()},
-    "mae_remaining_normalized": mae_rem,
-    "mae_improvement_normalized": mae_imp,
+    "top_k_accuracy_percent": {k: float(v) * 100 for k, v in topk.items()},
+    "mae_remaining_normalized": float(mae_rem),
+    "mae_improvement_normalized": float(mae_imp),
     "sample_prefix": [str(a) for a in prefix],
     "sample_prediction_top1": rec["next_activity_recommendations"][0]["activity"],
-    "sample_prediction_top1_prob": rec["next_activity_recommendations"][0]["probability"],
-    "sample_remaining_seconds": math.expm1(rec["predicted_remaining_time_log"]),
-    "sample_improvement": rec["predicted_improvement"],
+    "sample_prediction_top1_prob": float(rec["next_activity_recommendations"][0]["probability"]),
+    "sample_remaining_seconds": float(math.expm1(rec["predicted_remaining_time_log"])),
+    "sample_improvement": float(rec["predicted_improvement"]),
 }
 
 with open(os.path.join(OUT_DIR, "walkthrough_metrics.json"), "w", encoding="utf8") as f:
